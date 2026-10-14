@@ -1,0 +1,662 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#252525">
+<title>Urna Eletrônica - Interface</title>
+<style>
+  :root {
+    --fundo: #252525;
+    --vermelho: #b50000;
+    --amarelo: #f7c900;
+    --verde: #18c75a;
+    --laranja: #ff8c00;
+    --tela-borda: #bdbdbd;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
+  [hidden] { display: none !important; }
+
+  html, body { width: 100%; height: 100%; }
+  body {
+    background: var(--fundo);
+    min-height: 100dvh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  /* BOTÃO DE TELA CHEIA - ADICIONADO */
+  .btn-tela-cheia {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    padding: 10px 14px;
+    background: #161616;
+    color: #fff;
+    border: 1px solid #777;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,.35);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-tela-cheia:hover {
+    background: #333;
+  }
+
+  .btn-tela-cheia:active {
+    transform: scale(.97);
+  }
+
+  .btn-tela-cheia:focus-visible {
+    outline: 3px solid var(--amarelo);
+    outline-offset: 3px;
+  }
+
+  /* Palco vertical 9:16.
+     container-type faz as unidades cqw serem relativas ao palco (e não à janela). */
+  .live-frame {
+    width: min(100vw, 56.25dvh);
+    height: min(100dvh, 177.7778vw);
+    aspect-ratio: 9 / 16;
+    container-type: size;
+    position: relative;
+    background: #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .4);
+  }
+
+  /* ---------- Banner ---------- */
+  .banner {
+    flex: 0 0 15%;
+    min-height: 0;
+    background: linear-gradient(135deg, var(--vermelho), #ef2020 55%, #8e0000);
+    color: #fff;
+    text-align: center;
+    padding: clamp(7px, 2.1%, 15px) 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(4px, 1.2%, 9px);
+    border-bottom: 4px solid var(--amarelo);
+    text-shadow: 0 2px 2px rgba(0, 0, 0, .3);
+  }
+  .banner .chamada { font-size: clamp(17px, 4.7cqw, 29px); font-weight: 900; line-height: 1.08; letter-spacing: .3px; }
+  .banner .opcoes { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; width: 100%; }
+  .opcao {
+    background: #fff;
+    color: #171717;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-weight: 900;
+    font-size: clamp(13px, 3.3cqw, 20px);
+    text-shadow: none;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, .25);
+  }
+  .banner .instrucao-live { font-size: clamp(10px, 2.7cqw, 16px); font-weight: bold; line-height: 1.1; }
+
+  /* ---------- Placar ---------- */
+  .placar {
+    flex: 0 0 14%;
+    min-height: 0;
+    background: #161616;
+    color: #fff;
+    padding: 1.8% 3.2%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.5%;
+    border-bottom: 3px solid #000;
+  }
+  .placar-lados { display: flex; gap: 4%; }
+  .lado { flex: 1; min-width: 0; }
+  .lado-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+  .lado-nome { font-size: clamp(10px, 2.8cqw, 16px); font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lado.lider .lado-nome { color: var(--amarelo); }
+  .lado-votos { font-size: clamp(24px, 8cqw, 52px); font-weight: 900; font-variant-numeric: tabular-nums; color: var(--cor); line-height: 1; }
+  .barra { height: clamp(6px, 1.4cqw, 10px); background: #333; border-radius: 5px; overflow: hidden; margin-top: 3px; }
+  .barra-fill { height: 100%; width: 0; background: var(--cor); transition: width .3s; }
+  .placar-info { font-size: clamp(9px, 2.3cqw, 13px); text-align: center; color: #ccc; }
+  .placar-aviso { font-size: clamp(8px, 2cqw, 11px); text-align: center; color: #888; }
+
+  /* ---------- Vencedor da rodada ---------- */
+  .vencedor {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: rgba(0, 0, 0, .93);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 3%;
+    text-align: center;
+    padding: 8%;
+  }
+  .venc-titulo { font-size: clamp(16px, 4.5cqw, 28px); font-weight: bold; color: var(--amarelo); letter-spacing: 1px; }
+  .venc-nome { font-size: clamp(28px, 9cqw, 60px); font-weight: 900; line-height: 1.05; }
+  .venc-placar { font-size: clamp(14px, 4cqw, 24px); }
+  .venc-btn {
+    margin-top: 4%;
+    padding: 3% 8%;
+    font-size: clamp(14px, 4cqw, 24px);
+    font-weight: bold;
+    background: var(--verde);
+    color: #111;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .venc-btn:focus-visible { outline: 3px solid var(--amarelo); outline-offset: 3px; }
+  .venc-dica { font-size: clamp(10px, 2.4cqw, 14px); color: #aaa; }
+
+  /* ---------- Urna ---------- */
+  .urna {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    background: linear-gradient(#efefef, #d9d9d9);
+    padding: 3.2%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .topo { display: flex; gap: 3%; height: 100%; min-height: 0; align-items: stretch; }
+
+  /* ---------- Tela ---------- */
+  .tela {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    background: #fff;
+    border: 2px solid var(--tela-borda);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, .12);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    padding: 3%;
+    overflow: hidden;
+  }
+  .simbolo {
+    width: clamp(42px, 15cqw, 105px);
+    height: clamp(42px, 15cqw, 105px);
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #28a745, #ffcc00, #0066ff);
+    margin-bottom: 5%;
+  }
+  .tela h1 { font-size: clamp(18px, 5cqw, 34px); color: #222; letter-spacing: 1px; text-align: center; line-height: 1.1; }
+
+  /* Caixas de dígitos (substituem o <input>) */
+  .digitos { margin-top: 6%; display: flex; justify-content: center; gap: 4%; width: 100%; }
+  .digito {
+    width: 28%;
+    max-width: 70px;
+    aspect-ratio: 3 / 4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid #999;
+    background: #fff;
+    color: #111;
+    font-size: clamp(22px, 6cqw, 38px);
+    font-weight: bold;
+  }
+
+  .mensagem { font-size: clamp(10px, 2.8cqw, 16px); text-align: center; color: #333; margin-top: 3%; overflow-wrap: anywhere; }
+  .mensagem:empty { display: none; }
+
+  .voto-branco { font-size: clamp(16px, 4.6cqw, 30px); font-weight: bold; text-align: center; color: #111; }
+
+  .fim { font-size: clamp(38px, 10cqw, 68px); font-weight: bold; letter-spacing: 3px; color: #111; }
+
+  /* ---------- Candidato ---------- */
+  .candidato { width: 100%; flex: 1; min-height: 0; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 2px 0; display: flex; }
+  .candidato[hidden] { display: none; }
+  .candidato img {
+    width: min(100%, 180px);
+    height: clamp(90px, 27cqw, 190px);
+    max-width: 100%;
+    object-fit: contain;
+    border: 1px solid #ddd;
+    background: #fff;
+    margin-bottom: 3%;
+    flex-shrink: 1;
+  }
+  .candidato .numero-candidato { font-size: clamp(14px, 3.5cqw, 20px); font-weight: bold; margin-bottom: 3%; color: #111; }
+  .candidato .nome { font-size: clamp(14px, 4cqw, 25px); font-weight: bold; color: #111; line-height: 1.12; overflow-wrap: anywhere; }
+  .candidato .partido { font-size: clamp(11px, 2.8cqw, 16px); color: #333; margin-top: 4px; }
+  .candidato .instrucao { font-size: clamp(9px, 2.3cqw, 13px); color: #333; margin-top: 5%; }
+
+  /* ---------- Teclado ---------- */
+  .lado-direito { width: 43%; min-width: 0; flex-shrink: 0; display: flex; flex-direction: column; gap: 2%; min-height: 0; }
+  .logo {
+    flex: 0 0 12%;
+    min-height: 0;
+    background: #ececec;
+    border: 2px solid var(--tela-borda);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: clamp(12px, 3.7cqw, 24px);
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    line-height: 1.05;
+  }
+  .teclado {
+    flex: 1;
+    min-height: 0;
+    background: #111;
+    padding: 4%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(4, minmax(0, 1fr)) 1.05fr;
+    gap: 2.5%;
+  }
+  .tecla {
+    background: #222;
+    color: #fff;
+    border: none;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    font-size: clamp(18px, 5cqw, 28px);
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: inset 0 2px 2px rgba(255, 255, 255, .1), 0 2px 4px rgba(0, 0, 0, .5);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tecla:hover { background: #343434; }
+  .tecla:active { transform: translateY(2px); background: #444; }
+  .tecla.zero { grid-column: 2; }
+
+  .acoes { grid-column: 1 / span 3; display: grid; grid-template-columns: 1fr 1fr 1.15fr; align-items: stretch; gap: 3%; margin-top: 2%; min-width: 0; }
+  .btn {
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 3px;
+    font-size: clamp(7px, 1.9cqw, 12px);
+    color: #111;
+    min-width: 0;
+    min-height: 0;
+    padding: 3px 1px;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overflow-wrap: anywhere;
+  }
+  .btn:active { filter: brightness(.85); transform: translateY(2px); }
+  .btn.branco { background: #fff; }
+  .btn.corrige { background: var(--laranja); }
+  .btn.confirma { background: var(--verde); }
+
+  .tecla:focus-visible, .btn:focus-visible { outline: 3px solid var(--amarelo); outline-offset: 2px; }
+
+  @media (max-height: 500px) {
+    .banner { flex-basis: 16%; }
+    .banner .chamada { font-size: clamp(14px, 4cqw, 22px); }
+    .banner .instrucao-live { display: none; }
+    .urna { padding: 2%; }
+    .teclado { gap: 1.5%; }
+    .candidato img { height: clamp(65px, 20cqw, 110px); }
+  }
+</style>
+</head>
+<body>
+
+<!-- BOTÃO DE TELA CHEIA - ADICIONADO -->
+<button type="button" class="btn-tela-cheia" id="btnTelaCheia">
+  ⛶ Tela Cheia
+</button>
+
+<div class="live-frame">
+  <header class="banner">
+    <div class="chamada">🔥 COMENTE E ESCOLHA! 🔥</div>
+    <div class="opcoes" id="opcoes"></div>
+    <div class="instrucao-live">👇 COMENTE O NÚMERO DO SEU CANDIDATO 👇</div>
+  </header>
+
+  <section class="placar" aria-label="Placar da rodada">
+    <div class="placar-lados" id="placarLados"></div>
+    <div class="placar-info" id="placarInfo"></div>
+    <div class="placar-aviso">Enquete da live, sem valor de pesquisa eleitoral</div>
+  </section>
+
+  <main class="urna">
+    <div class="topo">
+      <section class="tela" id="tela" aria-live="polite">
+        <div class="simbolo" data-vistas="inicio"></div>
+        <h1 id="titulo" data-vistas="inicio erro">VOTAÇÃO</h1>
+
+        <div class="candidato" id="candidato" data-vistas="candidato">
+          <div class="numero-candidato" id="candNumero"></div>
+          <img id="candFoto" alt="">
+          <div class="nome" id="candNome"></div>
+          <div class="partido" id="candPartido"></div>
+          <div class="instrucao">Aperte CONFIRMA para finalizar</div>
+        </div>
+
+        <div class="voto-branco" data-vistas="branco">VOTO EM BRANCO</div>
+        <div class="fim" data-vistas="fim">FIM</div>
+
+        <div class="digitos" id="digitos" data-vistas="inicio erro" aria-label="Número digitado">
+          <div class="digito"></div><div class="digito"></div>
+        </div>
+        <div class="mensagem" id="mensagem" data-vistas="inicio erro branco"></div>
+      </section>
+
+      <div class="lado-direito">
+        <div class="logo">SISTEMA<br>ELEITORAL</div>
+        <div class="teclado" id="teclado">
+          <button type="button" class="tecla" data-tecla="1">1</button>
+          <button type="button" class="tecla" data-tecla="2">2</button>
+          <button type="button" class="tecla" data-tecla="3">3</button>
+          <button type="button" class="tecla" data-tecla="4">4</button>
+          <button type="button" class="tecla" data-tecla="5">5</button>
+          <button type="button" class="tecla" data-tecla="6">6</button>
+          <button type="button" class="tecla" data-tecla="7">7</button>
+          <button type="button" class="tecla" data-tecla="8">8</button>
+          <button type="button" class="tecla" data-tecla="9">9</button>
+          <button type="button" class="tecla zero" data-tecla="0">0</button>
+          <div class="acoes">
+            <button type="button" class="btn branco" data-acao="branco">BRANCO</button>
+            <button type="button" class="btn corrige" data-acao="corrige">CORRIGE</button>
+            <button type="button" class="btn confirma" data-acao="confirma">CONFIRMA</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="vencedor" id="vencedor" role="alertdialog" aria-live="assertive" hidden>
+    <div class="venc-titulo">VENCEDOR DA RODADA</div>
+    <div class="venc-nome" id="vencNome"></div>
+    <div class="venc-placar" id="vencPlacar"></div>
+    <button type="button" class="venc-btn" id="btnNova">NOVA RODADA</button>
+    <div class="venc-dica">Enter ou N também iniciam a próxima rodada</div>
+  </div>
+</div>
+
+<script>
+/* ============ CONFIGURAÇÃO (edite aqui) ============ */
+const CONFIG = {
+  meta: 200,
+  reiniciarAposMs: 4000,
+  som: true,
+  candidatos: {
+    "13": { nome: "LULA",             rotulo: "LULA",   partido: "PT", imagem: "lula.jpg",   cor: "#f7c900" },
+    "22": { nome: "FLÁVIO BOLSONARO", rotulo: "FLÁVIO", partido: "PL", imagem: "flavio.jpg", cor: "#2196f3" }
+  }
+};
+/* ==================================================== */
+
+/* TELA CHEIA - ADICIONADO */
+const btnTelaCheia = document.getElementById('btnTelaCheia');
+
+async function alternarTelaCheia() {
+  try {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+    } else {
+      await document.exitFullscreen();
+    }
+  } catch (erro) {
+    console.warn('Não foi possível alterar o modo de tela cheia:', erro);
+  }
+}
+
+btnTelaCheia.addEventListener('click', alternarTelaCheia);
+
+document.addEventListener('fullscreenchange', () => {
+  btnTelaCheia.textContent = document.fullscreenElement
+    ? '⛶ Sair da Tela Cheia'
+    : '⛶ Tela Cheia';
+});
+/* FIM DA ADIÇÃO DE TELA CHEIA */
+
+const $ = (id) => document.getElementById(id);
+const tela = $('tela');
+const caixas = [...document.querySelectorAll('.digito')];
+const foto = $('candFoto');
+
+const FOTO_PADRAO = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 130"><rect width="100" height="130" fill="#e6e6e6"/>' +
+  '<circle cx="50" cy="48" r="22" fill="#b5b5b5"/><path d="M10 130c0-30 18-46 40-46s40 16 40 46z" fill="#b5b5b5"/></svg>'
+);
+
+const estado = { digitos: '', branco: false, finalizado: false, aviso: '' };
+let timerReinicio = null;
+
+/* ---------- Placar (salvo no navegador, sobrevive a recarregar a página) ---------- */
+const CHAVE_PLACAR = 'urna-placar-v1';
+const placar = { rodada: 1, votos: {}, brancos: 0, historico: [], vencedor: null };
+Object.keys(CONFIG.candidatos).forEach((n) => { placar.votos[n] = 0; });
+try {
+  const salvo = JSON.parse(localStorage.getItem(CHAVE_PLACAR));
+  if (salvo) Object.assign(placar, salvo, { votos: { ...placar.votos, ...salvo.votos } });
+} catch (e) { /* sem armazenamento: segue com placar zerado */ }
+
+function salvarPlacar() {
+  try { localStorage.setItem(CHAVE_PLACAR, JSON.stringify(placar)); } catch (e) { /* ignora */ }
+}
+
+$('placarLados').innerHTML = Object.entries(CONFIG.candidatos).map(([n, c]) => `
+  <div class="lado" id="lado${n}" style="--cor:${c.cor}">
+    <div class="lado-topo">
+      <span class="lado-nome">${n} — ${c.rotulo}</span>
+      <span class="lado-votos" id="votos${n}">0</span>
+    </div>
+    <div class="barra"><div class="barra-fill" id="barra${n}"></div></div>
+  </div>`).join('');
+
+function renderPlacar() {
+  const nums = Object.keys(CONFIG.candidatos);
+  const primeiro = placar.votos[nums[0]];
+  const empate = nums.every((n) => placar.votos[n] === primeiro);
+  const lider = nums.reduce((a, b) => (placar.votos[b] > placar.votos[a] ? b : a));
+  const total = nums.reduce((soma, n) => soma + placar.votos[n], 0);
+
+  nums.forEach((n) => {
+    $('votos' + n).textContent = placar.votos[n];
+    $('barra' + n).style.width = Math.min(100, (placar.votos[n] / CONFIG.meta) * 100) + '%';
+    $('lado' + n).classList.toggle('lider', !empate && n === lider);
+  });
+
+  $('placarInfo').textContent =
+    `Rodada ${placar.rodada} • Meta: ${CONFIG.meta} votos • Total: ${total} • Brancos: ${placar.brancos}`;
+
+  $('vencedor').hidden = !placar.vencedor;
+  if (placar.vencedor) {
+    $('vencNome').textContent = CONFIG.candidatos[placar.vencedor].nome;
+    $('vencPlacar').textContent = nums.map((n) => `${CONFIG.candidatos[n].rotulo} ${placar.votos[n]}`).join(' × ');
+    $('btnNova').focus();
+  }
+}
+
+function registrarVoto(num) {
+  if (num) placar.votos[num]++; else placar.brancos++;
+  placar.historico.push(num);
+  if (placar.historico.length > 50) placar.historico.shift();
+  if (num && placar.votos[num] >= CONFIG.meta) placar.vencedor = num;
+  salvarPlacar();
+  renderPlacar();
+}
+
+function desfazerVoto() {
+  if (placar.vencedor || !placar.historico.length) return;
+  const num = placar.historico.pop();
+  if (num) placar.votos[num]--; else placar.brancos--;
+  salvarPlacar();
+  renderPlacar();
+}
+
+function novaRodada(avancar = true) {
+  Object.keys(placar.votos).forEach((n) => { placar.votos[n] = 0; });
+  Object.assign(placar, {
+    brancos: 0,
+    historico: [],
+    vencedor: null,
+    rodada: avancar ? placar.rodada + 1 : placar.rodada
+  });
+  salvarPlacar();
+  renderPlacar();
+  reiniciar();
+}
+
+/* ---------- Banner gerado a partir dos candidatos ---------- */
+$('opcoes').innerHTML = Object.entries(CONFIG.candidatos)
+  .map(([num, c]) => `<div class="opcao">${num} — ${c.rotulo}</div>`)
+  .join('');
+
+const numerosValidos = Object.keys(CONFIG.candidatos).join(' ou ');
+
+/* ---------- Som ---------- */
+let audioCtx = null;
+function bipe(freq = 900, duracao = 0.07) {
+  if (!CONFIG.som) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const ganho = audioCtx.createGain();
+    osc.frequency.value = freq;
+    ganho.gain.value = 0.08;
+    osc.connect(ganho).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duracao);
+  } catch (e) { /* áudio indisponível: ignora */ }
+}
+
+/* ---------- Renderização ---------- */
+function vistaAtual() {
+  if (estado.finalizado) return 'fim';
+  if (estado.branco) return 'branco';
+  if (CONFIG.candidatos[estado.digitos]) return 'candidato';
+  if (estado.digitos.length === 2) return 'erro';
+  return 'inicio';
+}
+
+function render() {
+  const vista = vistaAtual();
+  const cand = CONFIG.candidatos[estado.digitos];
+
+  tela.dataset.vista = vista;
+  tela.querySelectorAll('[data-vistas]').forEach((el) => {
+    el.hidden = !el.dataset.vistas.split(' ').includes(vista);
+  });
+
+  $('titulo').textContent = vista === 'erro' ? 'NÚMERO ERRADO' : 'VOTAÇÃO';
+  caixas.forEach((caixa, i) => { caixa.textContent = estado.digitos[i] ?? ''; });
+
+  if (vista === 'candidato') {
+    $('candNumero').textContent = 'NÚMERO ' + estado.digitos;
+    $('candNome').textContent = cand.nome;
+    $('candPartido').textContent = 'PARTIDO ' + cand.partido;
+    foto.alt = 'Foto de ' + cand.nome;
+    foto.onerror = () => { foto.onerror = null; foto.src = FOTO_PADRAO; };
+    if (!foto.src.endsWith(cand.imagem)) foto.src = cand.imagem;
+  }
+
+  $('mensagem').textContent =
+    estado.aviso || (vista === 'erro' ? `Digite ${numerosValidos} e aperte CONFIRMA.` : '');
+}
+
+/* ---------- Ações ---------- */
+function digitar(d) {
+  if (estado.finalizado || estado.branco || estado.digitos.length >= 2) return;
+  estado.digitos += d;
+  estado.aviso = '';
+  bipe();
+  render();
+}
+
+function corrigir() {
+  if (estado.finalizado) return reiniciar();
+  estado.digitos = '';
+  estado.branco = false;
+  estado.aviso = '';
+  bipe(700);
+  render();
+}
+
+function votarBranco() {
+  if (estado.finalizado) return;
+  estado.digitos = '';
+  estado.branco = true;
+  estado.aviso = '';
+  bipe();
+  render();
+}
+
+function confirmar() {
+  if (estado.finalizado) return;
+  const valido = estado.branco || CONFIG.candidatos[estado.digitos];
+  if (!valido) {
+    estado.aviso = `Digite ${numerosValidos} antes de confirmar.`;
+    bipe(300, 0.15);
+    return render();
+  }
+  registrarVoto(estado.branco ? null : estado.digitos);
+  estado.finalizado = true;
+  estado.digitos = '';
+  estado.branco = false;
+  estado.aviso = '';
+  bipe(1000, 0.7);
+  render();
+  if (CONFIG.reiniciarAposMs > 0) timerReinicio = setTimeout(reiniciar, CONFIG.reiniciarAposMs);
+}
+
+function reiniciar() {
+  clearTimeout(timerReinicio);
+  Object.assign(estado, { digitos: '', branco: false, finalizado: false, aviso: '' });
+  render();
+}
+
+/* ---------- Eventos ---------- */
+$('teclado').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.dataset.tecla) digitar(btn.dataset.tecla);
+  else if (btn.dataset.acao === 'branco') votarBranco();
+  else if (btn.dataset.acao === 'corrige') corrigir();
+  else if (btn.dataset.acao === 'confirma') confirmar();
+  btn.blur();
+});
+
+$('btnNova').addEventListener('click', () => novaRodada());
+
+document.addEventListener('keydown', (e) => {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+
+  if (placar.vencedor) {
+    if (k === 'enter' || k === 'n') { e.preventDefault(); novaRodada(); }
+    return;
+  }
+
+  if (/^[0-9]$/.test(k)) digitar(k);
+  else if (k === 'enter') { e.preventDefault(); confirmar(); }
+  else if (k === 'backspace' || k === 'escape') corrigir();
+  else if (k === 'z') desfazerVoto();
+  else if (k === 'r' && e.shiftKey) novaRodada(false);
+});
+
+renderPlacar();
+render();
+</script>
+</body>
+</html>
+```
